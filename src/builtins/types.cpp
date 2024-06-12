@@ -48,13 +48,12 @@ class WasmType {
 };
 
 class WasmExpression {
-  private:
-    BinaryenExpressionRef expression;
+  protected:
+    BinaryenModuleRef module;
     WasmType *type;
+    BinaryenExpressionRef expression;
 
   public:
-    BinaryenModuleRef module;
-
     WasmExpression(BinaryenModuleRef module, WasmType *type,
                    BinaryenExpressionRef expression)
         : module(module), type(type), expression(expression) {}
@@ -827,15 +826,10 @@ class f64x2 : public v128 {
 };
 
 template <BinaryenIndex Index> class Local : public WasmExpression {
-  private:
-    BinaryenModuleRef module;
-    WasmType *type;
-    BinaryenExpressionRef expression;
-
   public:
     Local(BinaryenModuleRef module, WasmType *type)
-        : module(module), type(type),
-          expression(BinaryenLocalGet(module, Index, type->type)) {}
+        : WasmExpression(module, type,
+                         BinaryenLocalGet(module, Index, type->type)) {}
 
     WasmExpression operator=(const WasmExpression &expr) {
         return (*this = (BinaryenExpressionRef)expr);
@@ -846,5 +840,13 @@ template <BinaryenIndex Index> class Local : public WasmExpression {
         // (autodrop + tee + wasm-opt = get anyways)
         return WasmExpression(
             module, type, BinaryenLocalTee(module, Index, expr, type->type));
+    }
+
+    WasmExpression operator+=(const WasmExpression &rhs) {
+        return *this = *this + rhs;
+    }
+
+    WasmExpression operator-=(const WasmExpression &rhs) {
+        return *this = *this - rhs;
     }
 };
