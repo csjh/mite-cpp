@@ -34,8 +34,9 @@ BinaryenFunctionRef strcmp(BinaryenModuleRef mod) {
     WasmExpression(                                                            \
         mod, &u32_,                                                            \
         BinaryenSelect(mod, cond, true_, false_, BinaryenTypeAuto()))
-#define IF(cond, true_)                                                        \
-    WasmExpression(mod, &u32_, BinaryenIf(mod, cond, true_, nullptr))
+#define IF WasmExpression(mod, &u32_, BinaryenIf(mod,
+#define THEN ,
+#define END , nullptr))
 #define NUMARGS(...)                                                           \
     (sizeof((BinaryenExpressionRef[]){__VA_ARGS__}) /                          \
      sizeof(BinaryenExpressionRef))
@@ -54,19 +55,16 @@ BinaryenFunctionRef strcmp(BinaryenModuleRef mod) {
         tiebreaker = *s1 - *s2,
         len = SELECT(*s1 < *s2, *s1, *s2),
 
-        IF(
-            len >= i32const(u8x16_.size),
-            LOOP(
-                loopname,
-                BLOCK(
-                    IF(
-                        ctz = i8x16bitmask(LOAD(u8x16_, s1, u32_.size) != LOAD(u8x16_, s2, u32_.size)),
-                        RETURN(LOAD(u8_, s1 + (ctz = i32ctz(ctz)), u32_.size) - LOAD(u8_, s1 + ctz, u32_.size))),
+        IF len >= i32const(u8x16_.size) THEN LOOP(loopname, BLOCK(
+            IF ctz = i8x16bitmask(LOAD(u8x16_, s1, u32_.size) != LOAD(u8x16_, s2, u32_.size)) THEN
+                RETURN(LOAD(u8_, s1 + (ctz = i32ctz(ctz)), u32_.size) - LOAD(u8_, s1 + ctz, u32_.size))
+            END,
 
-                    s1 += i32const(u8x16_.size),
-                    s2 += i32const(u8x16_.size),
+            s1 += i32const(u8x16_.size),
+            s2 += i32const(u8x16_.size),
 
-                    BREAK_IF(loopname, (len -= i32const(u8x16_.size)) >= i32const(u8x16_.size))))),
+            BREAK_IF(loopname, (len -= i32const(u8x16_.size)) >= i32const(u8x16_.size))))
+        END,
 
         ctz = i8x16bitmask(
             LOAD(u8x16_, s1, u32_.size) != LOAD(u8x16_, s2, u32_.size)
