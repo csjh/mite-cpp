@@ -3,7 +3,7 @@
 BinaryenFunctionRef strcmp(BinaryenModuleRef mod) {
     auto u8_ = u8(mod);
     auto u32_ = u32(mod);
-    auto u8x16_ = i8x16(mod);
+    auto u8x16_ = u8x16(mod);
 
     auto s1 = Local<0>(mod, &u32_);
     auto s2 = Local<1>(mod, &u32_);
