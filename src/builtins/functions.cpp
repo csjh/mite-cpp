@@ -9,7 +9,9 @@ BinaryenFunctionRef strcmp(BinaryenModuleRef mod) {
     auto s2 = Local<1>(mod, &u32_);
     auto len = Local<2>(mod, &u32_);
     auto ctz = Local<3>(mod, &u32_);
+    auto s1_len = Local<3>(mod, &u32_);
     auto tiebreaker = Local<4>(mod, &u32_);
+    auto s2_len = Local<4>(mod, &u32_);
 
     // in my defense, this is basically a DSL
 
@@ -43,7 +45,7 @@ BinaryenFunctionRef strcmp(BinaryenModuleRef mod) {
 #define BLOCK(...)                                                             \
     BinaryenBlock(mod, NULL, (BinaryenExpressionRef[]){__VA_ARGS__},           \
                   NUMARGS(__VA_ARGS__), BinaryenTypeAuto())
-#define LOOP(name, body) BinaryenLoop(mod, name, body)
+#define LOOP(name, ...) BinaryenLoop(mod, name, BLOCK(__VA_ARGS__))
 #define RETURN(value) BinaryenReturn(mod, value)
 #define BREAK_IF(name, condition) BinaryenBreak(mod, name, condition, NULL)
 
@@ -52,10 +54,11 @@ BinaryenFunctionRef strcmp(BinaryenModuleRef mod) {
 
     // clang-format off
     BinaryenExpressionRef block[] = {
-        tiebreaker = *s1 - *s2,
-        len = SELECT(*s1 < *s2, *s1, *s2),
+        // some juggling to minimize memory accesses
+        len = SELECT(s1_len < s2_len, s1_len = *s1, s2_len = *s2),
+        tiebreaker = s1_len - s2_len,
 
-        IF len >= i32const(u8x16_.size) THEN LOOP(loopname, BLOCK(
+        IF len >= i32const(u8x16_.size) THEN LOOP(loopname,
             IF ctz = i8x16bitmask(LOAD(u8x16_, s1, u32_.size) != LOAD(u8x16_, s2, u32_.size)) THEN
                 RETURN(LOAD(u8_, s1 + (ctz = i32ctz(ctz)), u32_.size) - LOAD(u8_, s1 + ctz, u32_.size))
             END,
@@ -63,11 +66,11 @@ BinaryenFunctionRef strcmp(BinaryenModuleRef mod) {
             s1 += i32const(u8x16_.size),
             s2 += i32const(u8x16_.size),
 
-            BREAK_IF(loopname, (len -= i32const(u8x16_.size)) >= i32const(u8x16_.size))))
+            BREAK_IF(loopname, (len -= i32const(u8x16_.size)) >= i32const(u8x16_.size)))
         END,
 
         ctz = i8x16bitmask(
-            LOAD(u8x16_, s1, u32_.size) != LOAD(u8x16_, s2, u32_.size)
+            (LOAD(u8x16_, s1, u32_.size) != LOAD(u8x16_, s2, u32_.size))
                    & (i8x16const(mask) < i8x16splat(len))),
 
         SELECT(
