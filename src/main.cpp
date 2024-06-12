@@ -1,4 +1,4 @@
-#include "binaryen/src/binaryen-c.h"
+#include "../binaryen/src/binaryen-c.h"
 
 int main() {
     BinaryenModuleRef module = BinaryenModuleCreate();
